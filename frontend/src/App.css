@@ -1,31 +1,224 @@
+/* ── Base ────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
 body {
-  font-family: Arial, sans-serif;
-  background-color: #f4f6f8;
+  font-family:
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  background: #f0f2f5;
+  color: #1a1a2e;
 }
 
-.container {
-  width: 70%;
-  margin: 40px auto;
-  background: white;
-  padding: 30px;
-  border-radius: 8px;
-  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 24px 60px;
 }
 
-h1 {
+/* ── Header ──────────────────────────────────────────── */
+.header {
   text-align: center;
-  margin-bottom: 5px;
+  margin-bottom: 28px;
+}
+
+.header h1 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #1a1a2e;
 }
 
 .subtitle {
-  text-align: center;
-  color: #555;
-  margin-bottom: 25px;
+  color: #6b7280;
+  font-size: 0.95rem;
+  margin-top: 4px;
 }
 
-.loading {
-  text-align: center;
-  font-size: 18px;
+/* ── Controls bar ────────────────────────────────────── */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+  background: #fff;
+  padding: 18px 22px;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  margin-bottom: 24px;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.control-group label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #6b7280;
+}
+
+.control-group select {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: #fff;
+  cursor: pointer;
+  min-width: 200px;
+}
+
+/* ── Tabs ─────────────────────────────────────────────── */
+.tab-group {
+  display: flex;
+  gap: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #d1d5db;
+  align-self: flex-end;
+}
+
+.tab {
+  padding: 8px 18px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: #fff;
+  color: #6b7280;
+  transition: all 0.15s;
+}
+
+.tab.active {
+  background: #1976d2;
+  color: #fff;
+}
+
+.tab:hover:not(.active) {
+  background: #f3f4f6;
+}
+
+/* ── Day buttons ──────────────────────────────────────── */
+.day-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.day-btn {
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.day-btn.active {
+  background: #1976d2;
+  color: #fff;
+  border-color: #1976d2;
+}
+
+.day-btn:hover:not(.active) {
+  background: #f3f4f6;
+}
+
+/* ── Refresh ──────────────────────────────────────────── */
+.refresh-btn {
+  margin-left: auto;
+  padding: 8px 22px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  background: #1976d2;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s;
+  align-self: flex-end;
+}
+
+.refresh-btn:hover {
+  background: #1565c0;
+}
+
+.refresh-btn:disabled {
+  background: #93c5fd;
+  cursor: not-allowed;
+}
+
+/* ── Status cards ─────────────────────────────────────── */
+.status-cards {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.card {
+  flex: 1;
+  background: #fff;
+  border-radius: 12px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.card-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #6b7280;
+}
+
+.card-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.card.status-stock-ok .card-value {
+  color: #16a34a;
+}
+
+.card.status-low-stock .card-value {
+  color: #f59e0b;
+}
+
+.card.status-reorder-now .card-value {
+  color: #dc2626;
+}
+
+/* ── Chart ────────────────────────────────────────────── */
+.chart-box {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  margin-bottom: 24px;
+}
+
+/* ── Table ────────────────────────────────────────────── */
+.table-wrapper {
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 table {
@@ -33,49 +226,57 @@ table {
   border-collapse: collapse;
 }
 
-th {
-  background-color: #1976d2;
-  color: white;
-  padding: 10px;
+thead th {
+  background: #1976d2;
+  color: #fff;
+  padding: 12px 16px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  text-align: left;
 }
 
-td {
-  padding: 10px;
+tbody td {
+  padding: 11px 16px;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 0.9rem;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr:hover {
+  background: #f9fafb;
+}
+
+/* ── Misc ─────────────────────────────────────────────── */
+.loading,
+.no-data {
   text-align: center;
-  border-bottom: 1px solid #ddd;
+  padding: 40px 0;
+  color: #6b7280;
+  font-size: 1rem;
 }
 
-tr:hover {
-  background-color: #f1f1f1;
-}
-.button-container {
-  text-align: center;
-  margin-bottom: 20px;
-}
+/* ── Responsive ───────────────────────────────────────── */
+@media (max-width: 700px) {
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
 
-button {
-  background-color: #1976d2;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  font-size: 15px;
-  border-radius: 5px;
-  cursor: pointer;
-}
+  .refresh-btn {
+    margin-left: 0;
+  }
 
-button:hover {
-  background-color: #125aa3;
-}
+  .status-cards {
+    flex-direction: column;
+  }
 
-button:disabled {
-  background-color: #9bbce3;
-  cursor: not-allowed;
-}
-.chart-box {
-  max-width: 700px;
-  margin: 0 auto 40px;
-  padding: 20px;
-  background: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.08);
+  .control-group select {
+    min-width: auto;
+    width: 100%;
+  }
 }

@@ -1,30 +1,38 @@
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
+DB_URL = ""
 
-DB_USER = "postgres"
-DB_PASSWORD = "root"
-DB_HOST = "localhost"
-DB_PORT = "5432"
-DB_NAME = "inventory_forecasting"
+engine = create_engine(DB_URL)
 
+# ── Create table if it doesn't exist ─────────────────────────
+CREATE_TABLE = """
+CREATE TABLE IF NOT EXISTS inventory_sales (
+    id          SERIAL PRIMARY KEY,
+    sku_id      VARCHAR(20)  NOT NULL,
+    sku_name    VARCHAR(100) NOT NULL,
+    sale_date   DATE         NOT NULL,
+    sales_qty   INTEGER      NOT NULL,
+    purchase_qty INTEGER     NOT NULL DEFAULT 0,
+    stock_level INTEGER      NOT NULL DEFAULT 0
+);
+"""
 
-engine = create_engine(
-    f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-)
+with engine.begin() as conn:
+    conn.execute(text(CREATE_TABLE))
+    # Clear old rows so re-runs don't duplicate
+    conn.execute(text("DELETE FROM inventory_sales"))
 
+print("Table created / cleared.")
 
-
+# ── Load CSV into DB ─────────────────────────────────────────
 df = pd.read_csv("../data/inventory_sales.csv")
-
-
-
 
 df.to_sql(
     "inventory_sales",
     engine,
     if_exists="append",
-    index=False
+    index=False,
 )
 
-print("Data inserted successfully into inventory_sales table")
+print(f"Inserted {len(df)} rows into inventory_sales table.")
