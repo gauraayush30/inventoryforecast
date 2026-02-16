@@ -9,24 +9,27 @@ DB_URL = "postgresql://postgres.qnvdcwrltxgyyyptwvat:myFkt784VTW98F19@aws-1-ap-s
 engine = create_engine(DB_URL, pool_pre_ping=True)
 
 
-#  SKU list 
 def get_all_skus() -> list[dict]:
     """Return distinct SKUs with their latest stock level and row count."""
     query = text("""
         SELECT
-            s.sku_id,
-            s.sku_name,
-            s.stock_level AS current_stock,
+            d.sku_id,
+            d.sku_name,
+            d.stock_level AS current_stock,
             cnt.total_records
-        FROM inventory_sales s
+        FROM (
+            SELECT DISTINCT ON (sku_id)
+                   sku_id, sku_name, stock_level
+            FROM inventory_sales
+            ORDER BY sku_id, sale_date DESC
+        ) d
         INNER JOIN (
             SELECT sku_id,
-                   MAX(sale_date)  AS max_date,
-                   COUNT(*)::int  AS total_records
+                   COUNT(*)::int AS total_records
             FROM inventory_sales
             GROUP BY sku_id
-        ) cnt ON s.sku_id = cnt.sku_id AND s.sale_date = cnt.max_date
-        ORDER BY s.sku_id
+        ) cnt ON d.sku_id = cnt.sku_id
+        ORDER BY d.sku_id
     """)
     with engine.connect() as conn:
         rows = conn.execute(query).mappings().all()
@@ -65,7 +68,7 @@ def get_current_stock(sku_id: str) -> int:
         SELECT stock_level
         FROM inventory_sales
         WHERE sku_id = :sku_id
-        ORDER BY sale_date DESC
+        ORDER BY sale_date DESC, id DESC
         LIMIT 1
     """)
     with engine.connect() as conn:
@@ -94,7 +97,7 @@ def record_transaction(sku_id: str, sales_qty: int, purchase_qty: int, transacti
         SELECT sku_id, sku_name, stock_level
         FROM inventory_sales
         WHERE sku_id = :sku_id
-        ORDER BY sale_date DESC
+        ORDER BY sale_date DESC, id DESC
         LIMIT 1
     """)
     

@@ -17,7 +17,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Pydantic models for request validation ──────────────────
 class TransactionRequest(BaseModel):
     """Request body for recording a sales/purchase transaction."""
     sku_id: str = Field(..., description="Stock Keeping Unit ID")
@@ -35,7 +34,6 @@ class TransactionRequest(BaseModel):
             }
         }
 
-# ── Load per-SKU ML models ───────────────────────────────────
 models = joblib.load("../backend/models.pkl")
 
 FEATURES = [
@@ -49,20 +47,17 @@ def home():
     return {"message": "Inventory Forecast API Running"}
 
 
-# ── List all SKUs (from DB) ──────────────────────────────────
 @app.get("/skus")
 def skus():
     return {"skus": get_all_skus()}
 
 
-# ── Historical sales (from DB) ──────────────────────────────
 @app.get("/history")
 def history(sku_id: str = Query(...), days: int = Query(7)):
     rows = db_get_history(sku_id, days)
     return {"sku_id": sku_id, "days": days, "history": rows}
 
 
-# ── Forecast (ML model) ─────────────────────────────────────
 @app.get("/forecast")
 def forecast(sku_id: str = Query(...), days: int = Query(7)):
     if sku_id not in models:
@@ -113,7 +108,6 @@ def forecast(sku_id: str = Query(...), days: int = Query(7)):
     }
 
 
-# ── Record a transaction (sales/purchase) ──────────────────
 @app.post("/record-transaction", status_code=status.HTTP_201_CREATED)
 def record_sale_purchase(transaction: TransactionRequest):
     """
