@@ -1,11 +1,11 @@
 import pandas as pd
 from sqlalchemy import create_engine, text
 
-DB_URL = ""
+DB_URL = "postgresql://postgres.qnvdcwrltxgyyyptwvat:myFkt784VTW98F19@aws-1-ap-south-1.pooler.supabase.com:5432/postgres"
 
 engine = create_engine(DB_URL)
 
-# ── Create table if it doesn't exist ─────────────────────────
+
 CREATE_TABLE = """
 CREATE TABLE IF NOT EXISTS inventory_sales (
     id          SERIAL PRIMARY KEY,
@@ -25,7 +25,7 @@ with engine.begin() as conn:
 
 print("Table created / cleared.")
 
-# ── Load CSV into DB ─────────────────────────────────────────
+#  Load CSV into DB 
 df = pd.read_csv("../data/inventory_sales.csv")
 
 df.to_sql(

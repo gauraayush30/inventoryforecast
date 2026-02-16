@@ -1,10 +1,11 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 import joblib
 import pandas as pd
 from datetime import date, timedelta
 
-from db import get_all_skus, get_history as db_get_history, get_current_stock
+from db import get_all_skus, get_history as db_get_history, get_current_stock, record_transaction
 
 app = FastAPI()
 
@@ -15,6 +16,24 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Pydantic models for request validation ──────────────────
+class TransactionRequest(BaseModel):
+    """Request body for recording a sales/purchase transaction."""
+    sku_id: str = Field(..., description="Stock Keeping Unit ID")
+    sales_qty: int = Field(default=0, ge=0, description="Quantity sold")
+    purchase_qty: int = Field(default=0, ge=0, description="Quantity purchased")
+    transaction_date: str = Field(default_factory=lambda: str(date.today()), description="Transaction date (YYYY-MM-DD)")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "sku_id": "SKU001",
+                "sales_qty": 5,
+                "purchase_qty": 10,
+                "transaction_date": "2026-02-14"
+            }
+        }
 
 # ── Load per-SKU ML models ───────────────────────────────────
 models = joblib.load("../backend/models.pkl")
@@ -92,3 +111,46 @@ def forecast(sku_id: str = Query(...), days: int = Query(7)):
         "stock_status": stock_status,
         "forecast": result,
     }
+
+
+# ── Record a transaction (sales/purchase) ──────────────────
+@app.post("/record-transaction", status_code=status.HTTP_201_CREATED)
+def record_sale_purchase(transaction: TransactionRequest):
+    """
+    Record a sales or purchase transaction for an SKU.
+    
+    Updates inventory stock level based on sales and purchases.
+    Returns the transaction details and updated stock information.
+    
+    Parameters:
+    - sku_id: Stock Keeping Unit ID
+    - sales_qty: Quantity sold (reduces inventory)
+    - purchase_qty: Quantity purchased (increases inventory)
+    - transaction_date: Date of transaction (default: today)
+    """
+    try:
+        # Validate that at least one operation is being performed
+        if transaction.sales_qty == 0 and transaction.purchase_qty == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Either sales_qty or purchase_qty must be greater than 0"
+            )
+        
+        result = record_transaction(
+            sku_id=transaction.sku_id,
+            sales_qty=transaction.sales_qty,
+            purchase_qty=transaction.purchase_qty,
+            transaction_date=transaction.transaction_date
+        )
+        return result
+        
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error recording transaction: {str(e)}"
+        )
