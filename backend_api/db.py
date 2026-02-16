@@ -21,7 +21,7 @@ def get_all_skus() -> list[dict]:
             SELECT DISTINCT ON (sku_id)
                    sku_id, sku_name, stock_level
             FROM inventory_sales
-            ORDER BY sku_id, sale_date DESC
+            ORDER BY sku_id, sale_date DESC, id DESC
         ) d
         INNER JOIN (
             SELECT sku_id,
@@ -43,7 +43,7 @@ def get_history(sku_id: str, days: int) -> list[dict]:
         SELECT sale_date, sales_qty, purchase_qty, stock_level
         FROM inventory_sales
         WHERE sku_id = :sku_id
-        ORDER BY sale_date DESC
+        ORDER BY sale_date DESC, id DESC
         LIMIT :days
     """)
     with engine.connect() as conn:

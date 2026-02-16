@@ -55,7 +55,8 @@ def skus():
 @app.get("/history")
 def history(sku_id: str = Query(...), days: int = Query(7)):
     rows = db_get_history(sku_id, days)
-    return {"sku_id": sku_id, "days": days, "history": rows}
+    current_stock = get_current_stock(sku_id)
+    return {"sku_id": sku_id, "days": days, "history": rows, "current_stock": current_stock}
 
 
 @app.get("/forecast")

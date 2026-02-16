@@ -47,13 +47,13 @@ function App() {
   const [transactionMessage, setTransactionMessage] = useState("");
   const [transactionError, setTransactionError] = useState("");
 
-  // Fetch SKU list once
-  useEffect(() => {
+  // Fetch SKU list
+  const fetchSkus = useCallback(() => {
     fetch(`${API}/skus`)
       .then((r) => r.json())
       .then((res) => {
         setSkus(res.skus || []);
-        if (res.skus?.length) {
+        if (res.skus?.length && !selectedSku) {
           setSelectedSku(res.skus[0].sku_id);
           setTransactionForm((prev) => ({
             ...prev,
@@ -62,6 +62,11 @@ function App() {
         }
       })
       .catch(console.error);
+  }, [selectedSku]);
+
+  useEffect(() => {
+    fetchSkus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch history or forecast whenever controls change
@@ -86,7 +91,9 @@ function App() {
           });
         } else {
           setData(res.history || []);
-          setMeta(null);
+          setMeta({
+            current_stock: res.current_stock,
+          });
         }
       })
       .catch(() => setData([]))
@@ -149,7 +156,8 @@ function App() {
         transaction_date: new Date().toISOString().split("T")[0],
       });
 
-      // Refresh history if it's visible
+      // Refresh SKU list to update stats, then switch to history
+      fetchSkus();
       setTimeout(() => {
         setActiveTab("history");
       }, 1500);
@@ -164,43 +172,43 @@ function App() {
   const chartData =
     activeTab === "forecast"
       ? {
-          labels: data.map((d) => d.date),
-          datasets: [
-            {
-              label: "Predicted Sales",
-              data: data.map((d) => d.predicted_sales),
-              borderColor: "#1976d2",
-              backgroundColor: "rgba(25,118,210,0.12)",
-              tension: 0.35,
-              fill: true,
-              pointRadius: 4,
-            },
-          ],
-        }
+        labels: data.map((d) => d.date),
+        datasets: [
+          {
+            label: "Predicted Sales",
+            data: data.map((d) => d.predicted_sales),
+            borderColor: "#1976d2",
+            backgroundColor: "rgba(25,118,210,0.12)",
+            tension: 0.35,
+            fill: true,
+            pointRadius: 4,
+          },
+        ],
+      }
       : {
-          labels: data.map((d) => d.date),
-          datasets: [
-            {
-              label: "Sales Qty",
-              data: data.map((d) => d.sales_qty),
-              borderColor: "#2e7d32",
-              backgroundColor: "rgba(46,125,50,0.12)",
-              tension: 0.35,
-              fill: true,
-              pointRadius: 3,
-            },
-            {
-              label: "Stock Level",
-              data: data.map((d) => d.stock_level),
-              borderColor: "#f57c00",
-              backgroundColor: "rgba(245,124,0,0.08)",
-              tension: 0.35,
-              fill: false,
-              pointRadius: 3,
-              borderDash: [6, 3],
-            },
-          ],
-        };
+        labels: data.map((d) => d.date),
+        datasets: [
+          {
+            label: "Sales Qty",
+            data: data.map((d) => d.sales_qty),
+            borderColor: "#2e7d32",
+            backgroundColor: "rgba(46,125,50,0.12)",
+            tension: 0.35,
+            fill: true,
+            pointRadius: 3,
+          },
+          {
+            label: "Stock Level",
+            data: data.map((d) => d.stock_level),
+            borderColor: "#f57c00",
+            backgroundColor: "rgba(245,124,0,0.08)",
+            tension: 0.35,
+            fill: false,
+            pointRadius: 3,
+            borderDash: [6, 3],
+          },
+        ],
+      };
 
   const chartOpts = {
     responsive: true,
@@ -317,7 +325,7 @@ function App() {
             <span className="card-value">{meta.total_forecast_demand}</span>
           </div>
           <div
-            className={`card status-${meta.stock_status
+            className={`card status-${(meta.stock_status || "")
               .replace(/\s+/g, "-")
               .toLowerCase()}`}
           >
@@ -340,7 +348,7 @@ function App() {
           </div>
           <div className="card">
             <span className="card-label">Current Stock</span>
-            <span className="card-value">{skuInfo.current_stock}</span>
+            <span className="card-value">{meta.current_stock}</span>
           </div>
         </div>
       )}
