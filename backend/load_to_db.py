@@ -1,7 +1,13 @@
+import os
 import pandas as pd
 from sqlalchemy import create_engine, text
+from dotenv import load_dotenv
 
-DB_URL = "postgresql://postgres.qnvdcwrltxgyyyptwvat:myFkt784VTW98F19@aws-1-ap-south-1.pooler.supabase.com:5432/postgres"
+load_dotenv()
+
+DB_URL = os.getenv("DB_URL")
+if not DB_URL:
+    raise ValueError("DB_URL not found in environment variables")
 
 engine = create_engine(DB_URL)
 
