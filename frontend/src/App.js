@@ -47,6 +47,88 @@ function App() {
   const [transactionMessage, setTransactionMessage] = useState("");
   const [transactionError, setTransactionError] = useState("");
 
+  // Replenishment state
+  const [repSettings, setRepSettings] = useState(null);
+  const [repRecommendation, setRepRecommendation] = useState(null);
+  const [repLoading, setRepLoading] = useState(false);
+  const [repError, setRepError] = useState("");
+  const [repMessage, setRepMessage] = useState("");
+  const [repForm, setRepForm] = useState({
+    lead_time_days: 7,
+    min_order_qty: 10,
+    reorder_point: 50,
+    safety_stock: 25,
+    target_stock_level: 150,
+  });
+  // Fetch replenishment settings and recommendation
+  const fetchReplenishment = useCallback(async () => {
+    if (!selectedSku) return;
+    setRepLoading(true);
+    setRepError("");
+    setRepMessage("");
+
+    try {
+      const [settingsRes, recRes] = await Promise.all([
+        fetch(`${API}/replenishment-settings/${selectedSku}`),
+        fetch(`${API}/replenishment-recommendation?sku_id=${selectedSku}&days=14`),
+      ]);
+
+      if (!settingsRes.ok) {
+        const err = await settingsRes.json().catch(() => ({}));
+        throw new Error(err.detail || "Failed to load replenishment settings");
+      }
+      if (!recRes.ok) {
+        const err = await recRes.json().catch(() => ({}));
+        throw new Error(err.detail || "Failed to load replenishment recommendation");
+      }
+
+      const settings = await settingsRes.json();
+      const recommendation = await recRes.json();
+
+      setRepSettings(settings);
+      setRepRecommendation(recommendation);
+
+      // populate form with current settings
+      setRepForm((prev) => ({
+        ...prev,
+        lead_time_days: settings.lead_time_days || prev.lead_time_days,
+        min_order_qty: settings.min_order_qty || prev.min_order_qty,
+        reorder_point: settings.reorder_point || prev.reorder_point,
+        safety_stock: settings.safety_stock || prev.safety_stock,
+        target_stock_level: settings.target_stock_level || prev.target_stock_level,
+      }));
+    } catch (err) {
+      setRepError(err.message || "Error fetching replenishment data");
+    } finally {
+      setRepLoading(false);
+    }
+  }, [selectedSku]);
+ // Submit replenishment settings update
+  const handleRepSettingsSubmit = async (e) => {
+    e.preventDefault();
+    setRepError("");
+    setRepMessage("");
+
+    try {
+      const response = await fetch(`${API}/replenishment-settings/${selectedSku}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(repForm),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || "Failed to save settings");
+      }
+
+      const result = await response.json();
+      setRepMessage(result.message || "Settings saved");
+      // refresh recommendation
+      fetchReplenishment();
+    } catch (err) {
+      setRepError(err.message);
+    }
+  };
   // Fetch SKU list
   const fetchSkus = useCallback(() => {
     fetch(`${API}/skus`)
@@ -63,7 +145,113 @@ function App() {
       })
       .catch(console.error);
   }, [selectedSku]);
+        {/* Replenishment Panel */}
+        {activeTab === "replenishment" && (
+          <div className="replenishment-container">
+            <div className="replenishment-box">
+              <h2>Replenishment</h2>
 
+              {repLoading && <p className="loading">Loading…</p>}
+              {repError && <div className="alert alert-error">{repError}</div>}
+
+              <div className="replenishment-columns">
+                <div className="replenishment-panel">
+                  <h3>Current Settings</h3>
+                  {repSettings ? (
+                    <div>
+                      <p>Lead time (days): {repSettings.lead_time_days}</p>
+                      <p>Min order qty: {repSettings.min_order_qty}</p>
+                      <p>Reorder point: {repSettings.reorder_point}</p>
+                      <p>Safety stock: {repSettings.safety_stock}</p>
+                      <p>Target stock level: {repSettings.target_stock_level}</p>
+                    </div>
+                  ) : (
+                    <p>No settings available.</p>
+                  )}
+
+                  <h4>Update Settings</h4>
+                  <form onSubmit={handleRepSettingsSubmit} className="replenishment-form">
+                    <div className="form-group">
+                      <label>Lead time (days)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={repForm.lead_time_days}
+                        onChange={(e) => setRepForm((p) => ({ ...p, lead_time_days: Math.max(1, parseInt(e.target.value) || 1) }))}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Min order qty</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={repForm.min_order_qty}
+                        onChange={(e) => setRepForm((p) => ({ ...p, min_order_qty: Math.max(1, parseInt(e.target.value) || 1) }))}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Reorder point</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={repForm.reorder_point}
+                        onChange={(e) => setRepForm((p) => ({ ...p, reorder_point: Math.max(0, parseInt(e.target.value) || 0) }))}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Safety stock</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={repForm.safety_stock}
+                        onChange={(e) => setRepForm((p) => ({ ...p, safety_stock: Math.max(0, parseInt(e.target.value) || 0) }))}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Target stock level</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={repForm.target_stock_level}
+                        onChange={(e) => setRepForm((p) => ({ ...p, target_stock_level: Math.max(0, parseInt(e.target.value) || 0) }))}
+                      />
+                    </div>
+
+                    {repMessage && <div className="alert alert-success">{repMessage}</div>}
+
+                    <button type="submit" className="btn-submit">Save Settings</button>
+                  </form>
+                </div>
+
+                <div className="replenishment-panel">
+                  <h3>Recommendation</h3>
+                  {repRecommendation ? (
+                    <div>
+                      <p>Reorder needed: {repRecommendation.reorder_needed ? "Yes" : "No"}</p>
+                      <p>Order qty: {repRecommendation.order_quantity}</p>
+                      <p>Urgency: {repRecommendation.urgency}</p>
+                      <p>Projected stock at lead time: {repRecommendation.projected_stock_at_lead_time}</p>
+                      <p>Demand during lead time: {repRecommendation.demand_during_lead_time}</p>
+                      <p>Suggested order date: {repRecommendation.suggested_order_date}</p>
+                      <p>Expected arrival: {repRecommendation.expected_arrival_date}</p>
+                      <p className="replenishment-message">{repRecommendation.message}</p>
+                    </div>
+                  ) : (
+                    <p>No recommendation available.</p>
+                  )}
+
+                  <div style={{ marginTop: 12 }}>
+                    <button className="refresh-btn" onClick={fetchReplenishment} disabled={repLoading}>
+                      {repLoading ? "Loading…" : "Refresh Recommendation"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Body */}
   useEffect(() => {
     fetchSkus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -100,11 +288,15 @@ function App() {
       .finally(() => setLoading(false));
   }, [selectedSku, activeTab, historyDays, forecastDays]);
 
+  
+
   useEffect(() => {
-    if (activeTab !== "transaction") {
+    if (activeTab === "replenishment") {
+      fetchReplenishment();
+    } else if (activeTab !== "transaction") {
       fetchData();
     }
-  }, [fetchData, activeTab]);
+  }, [fetchData, activeTab, fetchReplenishment]);
 
   // Handle transaction form submission
   const handleTransactionSubmit = async (e) => {
@@ -167,6 +359,8 @@ function App() {
       setTransactionLoading(false);
     }
   };
+
+ 
 
   // ── chart config ───────────────────────────────────────────
   const chartData =
@@ -262,6 +456,12 @@ function App() {
             onClick={() => setActiveTab("forecast")}
           >
             Forecast
+          </button>
+          <button
+            className={`tab ${activeTab === "replenishment" ? "active" : ""}`}
+            onClick={() => setActiveTab("replenishment")}
+          >
+            Replenishment
           </button>
           <button
             className={`tab ${activeTab === "transaction" ? "active" : ""}`}

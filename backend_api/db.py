@@ -149,3 +149,170 @@ def record_transaction(sku_id: str, sales_qty: int, purchase_qty: int, transacti
         "new_stock_level": new_stock_level,
         "message": "Transaction recorded successfully"
     }
+
+
+
+# REPLENISHMENT SETTINGS - New functionality for stock replenishment recommendations
+
+
+# Default replenishment parameters (used if no custom settings exist)
+DEFAULT_REPLENISHMENT_SETTINGS = {
+    "lead_time_days": 7,
+    "min_order_qty": 10,
+    "reorder_point": 50,
+    "safety_stock": 25,
+    "target_stock_level": 150,
+}
+
+
+def get_replenishment_settings(sku_id: str) -> dict:
+    """
+    Get replenishment settings for a SKU.
+    
+    Returns custom settings if saved, otherwise returns sensible defaults.
+    Ensures defaults are used gracefully without requiring pre-populated database entries.
+    
+    Args:
+        sku_id: The SKU identifier
+    
+    Returns:
+        Dictionary with replenishment settings
+    """
+    query = text("""
+        SELECT 
+            sku_id, 
+            lead_time_days, 
+            min_order_qty, 
+            reorder_point, 
+            safety_stock, 
+            target_stock_level,
+            created_at,
+            updated_at
+        FROM replenishment_settings
+        WHERE sku_id = :sku_id
+        LIMIT 1
+    """)
+    
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(query, {"sku_id": sku_id}).mappings().fetchone()
+        
+        if row:
+            return {
+                "sku_id": row["sku_id"],
+                "lead_time_days": int(row["lead_time_days"]),
+                "min_order_qty": int(row["min_order_qty"]),
+                "reorder_point": int(row["reorder_point"]),
+                "safety_stock": int(row["safety_stock"]),
+                "target_stock_level": int(row["target_stock_level"]),
+                "created_at": str(row["created_at"]),
+                "updated_at": str(row["updated_at"]),
+                "is_custom": True,
+            }
+    except Exception as e:
+        # Table might not exist yet; fall through to defaults
+        pass
+    
+    # Return defaults with indication that these are defaults
+    return {
+        "sku_id": sku_id,
+        **DEFAULT_REPLENISHMENT_SETTINGS,
+        "is_custom": False,
+    }
+
+
+def set_replenishment_settings(sku_id: str, settings: dict) -> dict:
+    """
+    Set or update replenishment settings for a SKU.
+    
+    Args:
+        sku_id: The SKU identifier
+        settings: Dictionary with settings (lead_time_days, min_order_qty, reorder_point, safety_stock, target_stock_level)
+    
+    Returns:
+        Updated settings dictionary
+    
+    Raises:
+        ValueError: If SKU not found or invalid settings
+    """
+    # Validate SKU exists
+    check_sku_query = text("""
+        SELECT sku_id FROM inventory_sales 
+        WHERE sku_id = :sku_id 
+        LIMIT 1
+    """)
+    
+    with engine.connect() as conn:
+        sku_row = conn.execute(check_sku_query, {"sku_id": sku_id}).fetchone()
+    
+    if not sku_row:
+        raise ValueError(f"SKU '{sku_id}' not found in inventory")
+    
+    # Validate settings
+    required_fields = ["lead_time_days", "min_order_qty", "reorder_point", "safety_stock", "target_stock_level"]
+    for field in required_fields:
+        if field not in settings:
+            raise ValueError(f"Missing required field: {field}")
+    
+    # Validate numeric constraints
+    if settings["lead_time_days"] < 1:
+        raise ValueError("lead_time_days must be >= 1")
+    if settings["min_order_qty"] < 1:
+        raise ValueError("min_order_qty must be >= 1")
+    if settings["reorder_point"] < 0:
+        raise ValueError("reorder_point must be >= 0")
+    if settings["safety_stock"] < 0:
+        raise ValueError("safety_stock must be >= 0")
+    if settings["target_stock_level"] < settings["safety_stock"]:
+        raise ValueError("target_stock_level must be >= safety_stock")
+    
+    # Upsert into replenishment_settings table
+    upsert_query = text("""
+        INSERT INTO replenishment_settings 
+            (sku_id, lead_time_days, min_order_qty, reorder_point, safety_stock, target_stock_level, created_at, updated_at)
+        VALUES 
+            (:sku_id, :lead_time_days, :min_order_qty, :reorder_point, :safety_stock, :target_stock_level, NOW(), NOW())
+        ON CONFLICT (sku_id) 
+        DO UPDATE SET 
+            lead_time_days = EXCLUDED.lead_time_days,
+            min_order_qty = EXCLUDED.min_order_qty,
+            reorder_point = EXCLUDED.reorder_point,
+            safety_stock = EXCLUDED.safety_stock,
+            target_stock_level = EXCLUDED.target_stock_level,
+            updated_at = NOW()
+        RETURNING *
+    """)
+    
+    try:
+        with engine.begin() as conn:
+            result = conn.execute(
+                upsert_query,
+                {
+                    "sku_id": sku_id,
+                    "lead_time_days": settings["lead_time_days"],
+                    "min_order_qty": settings["min_order_qty"],
+                    "reorder_point": settings["reorder_point"],
+                    "safety_stock": settings["safety_stock"],
+                    "target_stock_level": settings["target_stock_level"],
+                }
+            )
+            row = result.mappings().first()
+        
+        return {
+            "sku_id": row["sku_id"],
+            "lead_time_days": int(row["lead_time_days"]),
+            "min_order_qty": int(row["min_order_qty"]),
+            "reorder_point": int(row["reorder_point"]),
+            "safety_stock": int(row["safety_stock"]),
+            "target_stock_level": int(row["target_stock_level"]),
+            "created_at": str(row["created_at"]),
+            "updated_at": str(row["updated_at"]),
+            "message": "Replenishment settings saved successfully",
+        }
+    except Exception as e:
+        if "replenishment_settings" in str(e).lower() and "does not exist" in str(e).lower():
+            raise ValueError(
+                "Replenishment settings table not yet created. "
+                "Please ensure the database has been properly initialized."
+            )
+        raise ValueError(f"Error saving replenishment settings: {str(e)}")
