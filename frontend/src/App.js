@@ -12,7 +12,12 @@ import {
   Filler,
 } from "chart.js";
 
-import { Line } from "react-chartjs-2";
+import Header from "./components/Header";
+import Controls from "./components/Controls";
+import ForecastTab from "./components/ForecastTab";
+import HistoryTab from "./components/HistoryTab";
+import TransactionTab from "./components/TransactionTab";
+import ReplenishmentTab from "./components/ReplenishmentTab";
 
 ChartJS.register(
   CategoryScale,
@@ -60,6 +65,7 @@ function App() {
     safety_stock: 25,
     target_stock_level: 150,
   });
+
   // Fetch replenishment settings and recommendation
   const fetchReplenishment = useCallback(async () => {
     if (!selectedSku) return;
@@ -88,7 +94,6 @@ function App() {
       setRepSettings(settings);
       setRepRecommendation(recommendation);
 
-      // populate form with current settings
       setRepForm((prev) => ({
         ...prev,
         lead_time_days: settings.lead_time_days || prev.lead_time_days,
@@ -103,7 +108,8 @@ function App() {
       setRepLoading(false);
     }
   }, [selectedSku]);
- // Submit replenishment settings update
+
+  // Submit replenishment settings update
   const handleRepSettingsSubmit = async (e) => {
     e.preventDefault();
     setRepError("");
@@ -123,12 +129,12 @@ function App() {
 
       const result = await response.json();
       setRepMessage(result.message || "Settings saved");
-      // refresh recommendation
       fetchReplenishment();
     } catch (err) {
       setRepError(err.message);
     }
   };
+
   // Fetch SKU list
   const fetchSkus = useCallback(() => {
     fetch(`${API}/skus`)
@@ -145,113 +151,7 @@ function App() {
       })
       .catch(console.error);
   }, [selectedSku]);
-        {/* Replenishment Panel */}
-        {activeTab === "replenishment" && (
-          <div className="replenishment-container">
-            <div className="replenishment-box">
-              <h2>Replenishment</h2>
 
-              {repLoading && <p className="loading">Loading…</p>}
-              {repError && <div className="alert alert-error">{repError}</div>}
-
-              <div className="replenishment-columns">
-                <div className="replenishment-panel">
-                  <h3>Current Settings</h3>
-                  {repSettings ? (
-                    <div>
-                      <p>Lead time (days): {repSettings.lead_time_days}</p>
-                      <p>Min order qty: {repSettings.min_order_qty}</p>
-                      <p>Reorder point: {repSettings.reorder_point}</p>
-                      <p>Safety stock: {repSettings.safety_stock}</p>
-                      <p>Target stock level: {repSettings.target_stock_level}</p>
-                    </div>
-                  ) : (
-                    <p>No settings available.</p>
-                  )}
-
-                  <h4>Update Settings</h4>
-                  <form onSubmit={handleRepSettingsSubmit} className="replenishment-form">
-                    <div className="form-group">
-                      <label>Lead time (days)</label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={repForm.lead_time_days}
-                        onChange={(e) => setRepForm((p) => ({ ...p, lead_time_days: Math.max(1, parseInt(e.target.value) || 1) }))}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Min order qty</label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={repForm.min_order_qty}
-                        onChange={(e) => setRepForm((p) => ({ ...p, min_order_qty: Math.max(1, parseInt(e.target.value) || 1) }))}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Reorder point</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={repForm.reorder_point}
-                        onChange={(e) => setRepForm((p) => ({ ...p, reorder_point: Math.max(0, parseInt(e.target.value) || 0) }))}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Safety stock</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={repForm.safety_stock}
-                        onChange={(e) => setRepForm((p) => ({ ...p, safety_stock: Math.max(0, parseInt(e.target.value) || 0) }))}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Target stock level</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={repForm.target_stock_level}
-                        onChange={(e) => setRepForm((p) => ({ ...p, target_stock_level: Math.max(0, parseInt(e.target.value) || 0) }))}
-                      />
-                    </div>
-
-                    {repMessage && <div className="alert alert-success">{repMessage}</div>}
-
-                    <button type="submit" className="btn-submit">Save Settings</button>
-                  </form>
-                </div>
-
-                <div className="replenishment-panel">
-                  <h3>Recommendation</h3>
-                  {repRecommendation ? (
-                    <div>
-                      <p>Reorder needed: {repRecommendation.reorder_needed ? "Yes" : "No"}</p>
-                      <p>Order qty: {repRecommendation.order_quantity}</p>
-                      <p>Urgency: {repRecommendation.urgency}</p>
-                      <p>Projected stock at lead time: {repRecommendation.projected_stock_at_lead_time}</p>
-                      <p>Demand during lead time: {repRecommendation.demand_during_lead_time}</p>
-                      <p>Suggested order date: {repRecommendation.suggested_order_date}</p>
-                      <p>Expected arrival: {repRecommendation.expected_arrival_date}</p>
-                      <p className="replenishment-message">{repRecommendation.message}</p>
-                    </div>
-                  ) : (
-                    <p>No recommendation available.</p>
-                  )}
-
-                  <div style={{ marginTop: 12 }}>
-                    <button className="refresh-btn" onClick={fetchReplenishment} disabled={repLoading}>
-                      {repLoading ? "Loading…" : "Refresh Recommendation"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Body */}
   useEffect(() => {
     fetchSkus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -288,8 +188,6 @@ function App() {
       .finally(() => setLoading(false));
   }, [selectedSku, activeTab, historyDays, forecastDays]);
 
-  
-
   useEffect(() => {
     if (activeTab === "replenishment") {
       fetchReplenishment();
@@ -298,13 +196,18 @@ function App() {
     }
   }, [fetchData, activeTab, fetchReplenishment]);
 
+  // Handle SKU change
+  const handleSkuChange = (skuId) => {
+    setSelectedSku(skuId);
+    setTransactionForm((prev) => ({ ...prev, sku_id: skuId }));
+  };
+
   // Handle transaction form submission
   const handleTransactionSubmit = async (e) => {
     e.preventDefault();
     setTransactionError("");
     setTransactionMessage("");
 
-    // Validation
     if (!transactionForm.sku_id) {
       setTransactionError("Please select a SKU");
       return;
@@ -323,9 +226,7 @@ function App() {
     try {
       const response = await fetch(`${API}/record-transaction`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(transactionForm),
       });
 
@@ -337,10 +238,9 @@ function App() {
       const result = await response.json();
 
       setTransactionMessage(
-        `✓ Transaction recorded! Stock updated: ${result.previous_stock} → ${result.new_stock_level}`
+        `\u2713 Transaction recorded! Stock updated: ${result.previous_stock} \u2192 ${result.new_stock_level}`
       );
 
-      // Reset form
       setTransactionForm({
         ...transactionForm,
         sales_qty: 0,
@@ -348,7 +248,6 @@ function App() {
         transaction_date: new Date().toISOString().split("T")[0],
       });
 
-      // Refresh SKU list to update stats, then switch to history
       fetchSkus();
       setTimeout(() => {
         setActiveTab("history");
@@ -360,353 +259,65 @@ function App() {
     }
   };
 
- 
-
-  // ── chart config ───────────────────────────────────────────
-  const chartData =
-    activeTab === "forecast"
-      ? {
-        labels: data.map((d) => d.date),
-        datasets: [
-          {
-            label: "Predicted Sales",
-            data: data.map((d) => d.predicted_sales),
-            borderColor: "#1976d2",
-            backgroundColor: "rgba(25,118,210,0.12)",
-            tension: 0.35,
-            fill: true,
-            pointRadius: 4,
-          },
-        ],
-      }
-      : {
-        labels: data.map((d) => d.date),
-        datasets: [
-          {
-            label: "Sales Qty",
-            data: data.map((d) => d.sales_qty),
-            borderColor: "#2e7d32",
-            backgroundColor: "rgba(46,125,50,0.12)",
-            tension: 0.35,
-            fill: true,
-            pointRadius: 3,
-          },
-          {
-            label: "Stock Level",
-            data: data.map((d) => d.stock_level),
-            borderColor: "#f57c00",
-            backgroundColor: "rgba(245,124,0,0.08)",
-            tension: 0.35,
-            fill: false,
-            pointRadius: 3,
-            borderDash: [6, 3],
-          },
-        ],
-      };
-
-  const chartOpts = {
-    responsive: true,
-    plugins: { legend: { position: "top" } },
-    scales: { y: { beginAtZero: true } },
-  };
-
   const skuInfo = skus.find((s) => s.sku_id === selectedSku);
 
   // ── render ─────────────────────────────────────────────────
   return (
     <div className="app">
-      {/* Header */}
-      <header className="header">
-        <h1>Inventory Forecast System</h1>
-        <p className="subtitle">Multi-SKU Sales Prediction &amp; Analytics</p>
-      </header>
+      <Header />
 
-      {/* Controls */}
-      <div className="controls">
-        <div className="control-group">
-          <label htmlFor="sku-select">SKU</label>
-          <select
-            id="sku-select"
-            value={selectedSku}
-            onChange={(e) => {
-              setSelectedSku(e.target.value);
-              setTransactionForm((prev) => ({
-                ...prev,
-                sku_id: e.target.value,
-              }));
-            }}
-          >
-            {skus.map((s) => (
-              <option key={s.sku_id} value={s.sku_id}>
-                {s.sku_id} — {s.sku_name}
-              </option>
-            ))}
-          </select>
-        </div>
+      <Controls
+        skus={skus}
+        selectedSku={selectedSku}
+        onSkuChange={handleSkuChange}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        historyDays={historyDays}
+        forecastDays={forecastDays}
+        onHistoryDaysChange={setHistoryDays}
+        onForecastDaysChange={setForecastDays}
+        onRefresh={fetchData}
+        loading={loading}
+      />
 
-        <div className="tab-group">
-          <button
-            className={`tab ${activeTab === "history" ? "active" : ""}`}
-            onClick={() => setActiveTab("history")}
-          >
-            History
-          </button>
-          <button
-            className={`tab ${activeTab === "forecast" ? "active" : ""}`}
-            onClick={() => setActiveTab("forecast")}
-          >
-            Forecast
-          </button>
-          <button
-            className={`tab ${activeTab === "replenishment" ? "active" : ""}`}
-            onClick={() => setActiveTab("replenishment")}
-          >
-            Replenishment
-          </button>
-          <button
-            className={`tab ${activeTab === "transaction" ? "active" : ""}`}
-            onClick={() => setActiveTab("transaction")}
-          >
-            Record Transaction
-          </button>
-        </div>
-
-        {activeTab !== "transaction" && (
-          <>
-            <div className="control-group">
-              <label>
-                {activeTab === "forecast" ? "Forecast" : "History"} Days
-              </label>
-              <div className="day-buttons">
-                {(activeTab === "history" ? [7, 30, 90] : [7, 14, 30]).map(
-                  (d) => {
-                    const active =
-                      activeTab === "history"
-                        ? historyDays === d
-                        : forecastDays === d;
-                    return (
-                      <button
-                        key={d}
-                        className={`day-btn ${active ? "active" : ""}`}
-                        onClick={() =>
-                          activeTab === "history"
-                            ? setHistoryDays(d)
-                            : setForecastDays(d)
-                        }
-                      >
-                        {d}d
-                      </button>
-                    );
-                  }
-                )}
-              </div>
-            </div>
-
-            <button
-              className="refresh-btn"
-              onClick={fetchData}
-              disabled={loading}
-            >
-              {loading ? "Loading…" : "Refresh"}
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* Stock status cards (forecast only) */}
-      {meta && activeTab === "forecast" && (
-        <div className="status-cards">
-          <div className="card">
-            <span className="card-label">Current Stock</span>
-            <span className="card-value">{meta.current_stock}</span>
-          </div>
-          <div className="card">
-            <span className="card-label">Forecast Demand</span>
-            <span className="card-value">{meta.total_forecast_demand}</span>
-          </div>
-          <div
-            className={`card status-${(meta.stock_status || "")
-              .replace(/\s+/g, "-")
-              .toLowerCase()}`}
-          >
-            <span className="card-label">Status</span>
-            <span className="card-value">{meta.stock_status}</span>
-          </div>
-        </div>
+      {activeTab === "forecast" && (
+        <ForecastTab data={data} meta={meta} loading={loading} />
       )}
 
-      {/* SKU info bar (history only) */}
-      {skuInfo && activeTab === "history" && (
-        <div className="status-cards">
-          <div className="card">
-            <span className="card-label">SKU</span>
-            <span className="card-value">{skuInfo.sku_name}</span>
-          </div>
-          <div className="card">
-            <span className="card-label">Records</span>
-            <span className="card-value">{skuInfo.total_records}</span>
-          </div>
-          <div className="card">
-            <span className="card-label">Current Stock</span>
-            <span className="card-value">{meta.current_stock}</span>
-          </div>
-        </div>
+      {activeTab === "history" && (
+        <HistoryTab
+          data={data}
+          meta={meta}
+          skuInfo={skuInfo}
+          loading={loading}
+        />
       )}
 
-      {/* Transaction Recording Form */}
       {activeTab === "transaction" && (
-        <div className="transaction-container">
-          <div className="transaction-form-box">
-            <h2>Record Sales / Purchase Transaction</h2>
-            <p className="form-subtitle">
-              Update inventory for {transactionForm.sku_id || "selected SKU"}
-            </p>
-
-            <form onSubmit={handleTransactionSubmit} className="transaction-form">
-              {/* Date Input */}
-              <div className="form-group">
-                <label htmlFor="transaction-date">Transaction Date</label>
-                <input
-                  id="transaction-date"
-                  type="date"
-                  value={transactionForm.transaction_date}
-                  onChange={(e) =>
-                    setTransactionForm((prev) => ({
-                      ...prev,
-                      transaction_date: e.target.value,
-                    }))
-                  }
-                  disabled={transactionLoading}
-                />
-              </div>
-
-              {/* Sales Quantity */}
-              <div className="form-group">
-                <label htmlFor="sales-qty">Sales Quantity</label>
-                <input
-                  id="sales-qty"
-                  type="number"
-                  min="0"
-                  value={transactionForm.sales_qty}
-                  onChange={(e) =>
-                    setTransactionForm((prev) => ({
-                      ...prev,
-                      sales_qty: Math.max(0, parseInt(e.target.value) || 0),
-                    }))
-                  }
-                  disabled={transactionLoading}
-                  placeholder="Units sold"
-                />
-              </div>
-
-              {/* Purchase Quantity */}
-              <div className="form-group">
-                <label htmlFor="purchase-qty">Purchase Quantity</label>
-                <input
-                  id="purchase-qty"
-                  type="number"
-                  min="0"
-                  value={transactionForm.purchase_qty}
-                  onChange={(e) =>
-                    setTransactionForm((prev) => ({
-                      ...prev,
-                      purchase_qty: Math.max(0, parseInt(e.target.value) || 0),
-                    }))
-                  }
-                  disabled={transactionLoading}
-                  placeholder="Units purchased"
-                />
-              </div>
-
-              {/* Messages */}
-              {transactionError && (
-                <div className="alert alert-error">{transactionError}</div>
-              )}
-              {transactionMessage && (
-                <div className="alert alert-success">{transactionMessage}</div>
-              )}
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                className="btn-submit"
-                disabled={transactionLoading}
-              >
-                {transactionLoading ? "Recording..." : "Record Transaction"}
-              </button>
-            </form>
-
-            {/* Quick Stats */}
-            {skuInfo && (
-              <div className="transaction-stats">
-                <div className="stat-item">
-                  <span className="stat-label">Current Stock</span>
-                  <span className="stat-value">{skuInfo.current_stock}</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">SKU Name</span>
-                  <span className="stat-value">{skuInfo.sku_name}</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-label">Total Records</span>
-                  <span className="stat-value">{skuInfo.total_records}</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        <TransactionTab
+          transactionForm={transactionForm}
+          onFormChange={setTransactionForm}
+          onSubmit={handleTransactionSubmit}
+          transactionLoading={transactionLoading}
+          transactionMessage={transactionMessage}
+          transactionError={transactionError}
+          skuInfo={skuInfo}
+        />
       )}
 
-      {/* Body */}
-      {activeTab !== "transaction" && (
-        <>
-          {loading ? (
-            <p className="loading">Loading data…</p>
-          ) : data.length === 0 ? (
-            <p className="no-data">No data available.</p>
-          ) : (
-            <>
-              <div className="chart-box">
-                <Line data={chartData} options={chartOpts} />
-              </div>
-
-              <div className="table-wrapper">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      {activeTab === "forecast" ? (
-                        <th>Predicted Sales</th>
-                      ) : (
-                        <>
-                          <th>Sales Qty</th>
-                          <th>Purchase Qty</th>
-                          <th>Stock Level</th>
-                        </>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.map((item, i) => (
-                      <tr key={i}>
-                        <td>{item.date}</td>
-                        {activeTab === "forecast" ? (
-                          <td>{item.predicted_sales}</td>
-                        ) : (
-                          <>
-                            <td>{item.sales_qty}</td>
-                            <td>{item.purchase_qty}</td>
-                            <td>{item.stock_level}</td>
-                          </>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </>
+      {activeTab === "replenishment" && (
+        <ReplenishmentTab
+          selectedSku={selectedSku}
+          repSettings={repSettings}
+          repRecommendation={repRecommendation}
+          repLoading={repLoading}
+          repError={repError}
+          repMessage={repMessage}
+          repForm={repForm}
+          onRepFormChange={setRepForm}
+          onRepSettingsSubmit={handleRepSettingsSubmit}
+          onRefresh={fetchReplenishment}
+        />
       )}
     </div>
   );
